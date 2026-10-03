@@ -4,7 +4,7 @@ from google import genai
 st.set_page_config(page_title="BCA Study Buddy", page_icon="📚", layout="centered")
 
 # If the model name stops working later, change it here
-MODEL = "gemma-3-27b-it"
+MODEL = "gemma-4-26b-a4b-it"
 
 st.markdown(
     """
