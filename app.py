@@ -34,7 +34,7 @@ client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
 BASE = (
     "You are BCA Study Buddy, a patient and kind teacher for a BCA student "
     "who finds this subject hard. Use very simple English and short sentences. "
-    "If the student writes Hindi, reply in Hindi. Never make the student feel bad. "
+    "If the student writes Hindi, reply in Hindi. Never make the student feel bad. Keep answers under 150 words unless asked for more. "
 )
 
 SUBJECTS = {
@@ -135,13 +135,15 @@ if question:
     )
 
     with st.chat_message("assistant"):
-        with st.spinner("Thinking..."):
-            try:
-                out = client.models.generate_content(model=MODEL, contents=prompt)
-                answer = out.text
-            except Exception as e:
-                answer = "Sorry, something went wrong. Please try again. (" + str(e)[:100] + ")"
-        st.markdown(answer)
+        try:
+            def stream():
+                for chunk in client.models.generate_content_stream(model=MODEL, contents=prompt):
+                    if chunk.text:
+                        yield chunk.text
+            answer = st.write_stream(stream())
+        except Exception as e:
+            answer = "Sorry, something went wrong. Please try again. (" + str(e)[:100] + ")"
+            st.markdown(answer)
 
     if chat["title"] == "New chat":
         chat["title"] = question[:26]
