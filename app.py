@@ -173,4 +173,4 @@ if messages:
 st.markdown(
     '<div class="note">AI can make mistakes. Check important answers with your book or teacher.<br>Built by Sunil for his friends • Hacktoberfest 2026</div>',
     unsafe_allow_html=True,
-            )
+    )
