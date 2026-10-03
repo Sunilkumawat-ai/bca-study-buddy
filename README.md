@@ -4,7 +4,7 @@ A free AI study helper for BCA students who find **Coding, Digital Logic and Mat
 
 Built for a real group of friends, for the **Hacktoberfest 2026 "Build for a Friend"** challenge.
 
-**🔗 Live demo:** PASTE-YOUR-APP-LINK-HERE
+**🔗 Live demo:** https://bca-study-buddy.streamlit.app/
 
 ## ✨ Features
 
@@ -15,10 +15,6 @@ Built for a real group of friends, for the **Hacktoberfest 2026 "Build for a Fri
 - **My chats:** a sidebar with new chat and past chats
 - **Save notes:** download any chat as **PDF** or **text**
 - **Clean, mobile-friendly design**
-
-## 🖼️ Screenshots
-
-Screenshots will be added here.
 
 ## 🧠 Why open-weight Gemma?
 
