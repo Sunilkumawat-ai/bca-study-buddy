@@ -2,6 +2,7 @@ import streamlit as st
 from google import genai
 from fpdf import FPDF
 from datetime import datetime
+from urllib.parse import quote_plus
 
 st.set_page_config(page_title="BCA Study Buddy", page_icon="📚", layout="centered")
 
@@ -153,6 +154,18 @@ if question:
 
 # ---------- save and clear ----------
 if messages:
+    last_q = [m["content"] for m in messages if m["role"] == "user"][-1]
+    v1, v2 = st.columns(2)
+    v1.link_button(
+        "▶️ Watch video (English)",
+        "https://www.youtube.com/results?search_query=" + quote_plus(last_q + " explained"),
+        use_container_width=True,
+    )
+    v2.link_button(
+        "▶️ Watch video (Hindi)",
+        "https://www.youtube.com/results?search_query=" + quote_plus(last_q + " in Hindi"),
+        use_container_width=True,
+    )
     c1, c2 = st.columns(2)
     try:
         c1.download_button(
