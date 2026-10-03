@@ -1,9 +1,10 @@
 import streamlit as st
 from google import genai
+from fpdf import FPDF
+from datetime import datetime
 
 st.set_page_config(page_title="BCA Study Buddy", page_icon="📚", layout="centered")
 
-# If the model name stops working later, change it here
 MODEL = "gemma-4-26b-a4b-it"
 
 st.markdown(
@@ -53,6 +54,56 @@ MODES = {
     "📝 Quiz me": "Ask ONE easy question about the topic. Wait for the answer. Then check it kindly and explain any mistake. ",
 }
 
+
+def clean_for_pdf(text):
+    text = text.replace("**", "").replace("`", "")
+    swaps = {"•": "-", "→": "->", "–": "-", "—": "-", "“": '"', "”": '"', "‘": "'", "’": "'"}
+    for a, b in swaps.items():
+        text = text.replace(a, b)
+    return text.encode("latin-1", "replace").decode("latin-1")
+
+
+def make_pdf(msgs):
+    pdf = FPDF()
+    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.add_page()
+    pdf.set_font("Helvetica", "B", 16)
+    pdf.cell(0, 10, "BCA Study Buddy - My Notes", new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font("Helvetica", "", 9)
+    pdf.cell(0, 6, "Saved on " + datetime.now().strftime("%d %b %Y"), new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(4)
+    for m in msgs:
+        who = "You" if m["role"] == "user" else "Study Buddy"
+        pdf.set_font("Helvetica", "B", 11)
+        pdf.cell(0, 7, who + ":", new_x="LMARGIN", new_y="NEXT")
+        pdf.set_font("Helvetica", "", 11)
+        pdf.multi_cell(0, 6, clean_for_pdf(m["content"]), new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(3)
+    return bytes(pdf.output())
+
+
+# ---------- chat history (kept while the page is open) ----------
+if "chats" not in st.session_state:
+    st.session_state["chats"] = [{"title": "New chat", "messages": []}]
+    st.session_state["current"] = 0
+
+with st.sidebar:
+    st.header("🕘 My chats")
+    if st.button("➕ New chat", use_container_width=True):
+        st.session_state["chats"].append({"title": "New chat", "messages": []})
+        st.session_state["current"] = len(st.session_state["chats"]) - 1
+        st.rerun()
+    for i, c in enumerate(st.session_state["chats"]):
+        label = ("▶ " if i == st.session_state["current"] else "") + c["title"]
+        if st.button(label, key="chat" + str(i), use_container_width=True):
+            st.session_state["current"] = i
+            st.rerun()
+    st.caption("History stays while this page is open. Use Save as PDF to keep notes.")
+
+chat = st.session_state["chats"][st.session_state["current"]]
+messages = chat["messages"]
+
+# ---------- choices ----------
 subject = st.radio("Choose subject", list(SUBJECTS), horizontal=True)
 mode = st.radio("What do you want?", list(MODES), horizontal=True)
 
@@ -62,10 +113,7 @@ for i, ex in enumerate(EXAMPLES[subject]):
     if cols[i].button(ex, key=subject + str(i), use_container_width=True):
         st.session_state["pending"] = ex
 
-if "messages" not in st.session_state:
-    st.session_state["messages"] = []
-
-for m in st.session_state["messages"]:
+for m in messages:
     with st.chat_message(m["role"]):
         st.markdown(m["content"])
 
@@ -76,13 +124,13 @@ if question:
     with st.chat_message("user"):
         st.markdown(question)
 
-    chat = ""
-    for m in st.session_state["messages"][-6:]:
-        chat += m["role"] + ": " + m["content"] + "\n"
+    history_text = ""
+    for m in messages[-6:]:
+        history_text += m["role"] + ": " + m["content"] + "\n"
 
     prompt = (
         BASE + SUBJECTS[subject] + MODES[mode]
-        + "\n\nChat so far:\n" + chat
+        + "\n\nChat so far:\n" + history_text
         + "\nStudent: " + question
     )
 
@@ -95,15 +143,34 @@ if question:
                 answer = "Sorry, something went wrong. Please try again. (" + str(e)[:100] + ")"
         st.markdown(answer)
 
-    st.session_state["messages"].append({"role": "user", "content": question})
-    st.session_state["messages"].append({"role": "assistant", "content": answer})
+    if chat["title"] == "New chat":
+        chat["title"] = question[:26]
+    messages.append({"role": "user", "content": question})
+    messages.append({"role": "assistant", "content": answer})
 
-if st.session_state["messages"]:
-    if st.button("🗑️ Clear chat"):
-        st.session_state["messages"] = []
+# ---------- save and clear ----------
+if messages:
+    c1, c2 = st.columns(2)
+    try:
+        c1.download_button(
+            "📄 Save as PDF", make_pdf(messages), "study-buddy-notes.pdf",
+            "application/pdf", use_container_width=True,
+        )
+    except Exception:
+        c1.caption("PDF not possible for this chat. Use Save as text.")
+    txt = "\n\n".join(
+        ("You: " if m["role"] == "user" else "Study Buddy: ") + m["content"] for m in messages
+    )
+    c2.download_button(
+        "📝 Save as text", txt.encode("utf-8"), "study-buddy-notes.txt",
+        "text/plain", use_container_width=True,
+    )
+    if st.button("🗑️ Clear this chat", use_container_width=True):
+        chat["messages"] = []
+        chat["title"] = "New chat"
         st.rerun()
 
 st.markdown(
     '<div class="note">AI can make mistakes. Check important answers with your book or teacher.<br>Built by Sunil for his friends • Hacktoberfest 2026</div>',
     unsafe_allow_html=True,
-)
+            )
